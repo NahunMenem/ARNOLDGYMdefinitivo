@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Ingresos de Hoy{% endblock %}
+{% block page_title %}Ingresos de Hoy{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- Header con contador + auto-refresh badge -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Ingresos del día</h1>
+      <p class="text-sm text-gray-500 mt-0.5">
+        {{ logs|length }} ingreso{{ 's' if logs|length != 1 else '' }} registrado{{ 's' if logs|length != 1 else '' }} hoy
+      </p>
+    </div>
+    <!-- Indicador de auto-refresh -->
+    <div class="flex items-center gap-2 px-3 py-1.5 bg-brand-500/10 border border-brand-500/20 rounded-full text-xs text-brand-400 font-medium"
+         id="refresh-badge">
+      <span class="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse"></span>
+      Actualizando cada 30 s
+    </div>
+  </div>
+
+  <!-- Tabla con HTMX auto-refresh -->
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-800/80">
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Hora
+            </th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Legajo
+            </th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Nombre
+            </th>
+          </tr>
+        </thead>
+        <tbody id="tbody-ingresos"
+               class="divide-y divide-gray-800/60"
+               hx-get="/registros_ingreso_parcial"
+               hx-trigger="every 30s"
+               hx-swap="innerHTML">
+          {% include '_registros_rows.html' %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  lucide.createIcons();
+  // Actualizar lucide icons cuando HTMX inserta nuevo contenido
+  document.addEventListener('htmx:afterSwap', () => lucide.createIcons());
+</script>
+{% endblock %}

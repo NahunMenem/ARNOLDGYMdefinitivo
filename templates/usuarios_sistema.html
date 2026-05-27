@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-6 py-10">
+  <h1 class="text-3xl font-bold mb-8 flex items-center gap-3">
+    <i data-lucide="database" class="w-6 h-6 text-blue-400"></i>
+    Todos los usuarios registrados
+  </h1>
+
+  <div class="overflow-x-auto rounded-xl shadow-lg border border-gray-700">
+    <table class="min-w-full bg-gray-800">
+      <thead class="bg-gray-700 text-sm text-gray-300 uppercase">
+        <tr>
+          <th class="p-3 text-left">Legajo</th>
+          <th class="p-3 text-left">Nombre</th>
+          <th class="p-3 text-left">Género</th>
+          <th class="p-3 text-left">Fecha Nac.</th>
+          <th class="p-3 text-left">Teléfono</th>
+          <th class="p-3 text-left">Válido hasta</th>
+          <th class="p-3 text-left">Membresía</th>
+          <th class="p-3 text-center">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-700 text-sm">
+        {% for u in usuarios %}
+        <tr class="hover:bg-gray-700">
+          <td class="p-3">{{ u.legajo }}</td>
+          <td class="p-3">{{ u.nombre }}</td>
+          <td class="p-3">{{ u.genero or "-" }}</td>
+          <td class="p-3">{{ u.fecha_nacimiento or "-" }}</td>
+          <td class="p-3">{{ u.telefono or "-" }}</td>
+          <td class="p-3">{{ u.valido_hasta or "-" }}</td>
+          <td class="p-3">
+            {% if u.membresia == "Vigente" %}
+              <span class="text-green-400 font-semibold">Vigente</span>
+            {% else %}
+              <span class="text-red-500 font-semibold">Vencido</span>
+            {% endif %}
+          </td>
+          <td class="p-3 text-center">
+            <button onclick="eliminarUsuarioSistema('{{ u.legajo }}')" 
+              class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded flex items-center gap-1 justify-center">
+              <i data-lucide="trash-2" class="w-4 h-4"></i> Eliminar
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="p-4 text-center text-gray-400">Sin usuarios</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  function eliminarUsuarioSistema(legajo) {
+    if (confirm(`¿Eliminar al usuario con legajo ${legajo}?`)) {
+      fetch(`/eliminar_usuario_sistema/${legajo}`, { method: "POST" })
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === "ok") {
+            location.reload();
+          } else {
+            alert("Error: " + data.mensaje);
+          }
+        })
+        .catch(() => alert("Error al eliminar"));
+    }
+  }
+
+  if (window.lucide) {
+    lucide.createIcons();
+  }
+</script>
+{% endblock %}
+

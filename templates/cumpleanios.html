@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Cumpleañeros{% endblock %}
+{% block page_title %}Cumpleañeros del mes{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <div>
+    <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+      🎂 Cumpleañeros del mes
+    </h1>
+    <p class="text-sm text-gray-500 mt-0.5">
+      {{ usuarios|length }} socio{{ 's' if usuarios|length != 1 }} cumplen años este mes
+    </p>
+  </div>
+
+  {% if usuarios %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for u in usuarios %}
+    <div class="card p-5 flex items-center gap-4 hover:border-pink-500/30 transition-colors duration-200"
+         style="border-color: rgba(236,72,153,0.1)">
+      <!-- Avatar con inicial -->
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-500/30 to-purple-500/30
+                  border border-pink-500/20 flex items-center justify-center text-xl font-bold text-pink-300 flex-shrink-0">
+        {{ u.name[0]|upper if u.name else '?' }}
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="font-semibold text-white truncate">{{ u.name }}</p>
+        <p class="text-xs text-gray-500 font-mono mt-0.5">{{ u.empleoNo if u.empleoNo else u.employeeNo }}</p>
+        <div class="flex items-center gap-2 mt-2">
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold
+                       bg-pink-500/15 text-pink-400 border border-pink-500/20">
+            🎉 {{ u.fecha }}
+          </span>
+          {% if u.telefono and u.telefono != '-' %}
+          <a href="https://wa.me/54{{ u.telefono.replace(' ', '') }}"
+             target="_blank"
+             class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold
+                    bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition">
+            <i data-lucide="message-circle" class="w-3 h-3"></i> WA
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="card p-16 text-center">
+    <div class="text-5xl mb-4">🎂</div>
+    <p class="text-gray-400 font-medium">Sin cumpleañeros este mes</p>
+    <p class="text-gray-600 text-sm mt-1">Registrá las fechas de nacimiento de los socios para verlos aquí</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+{% block scripts %}<script>lucide.createIcons();</script>{% endblock %}

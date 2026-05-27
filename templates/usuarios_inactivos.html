@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Socios Vencidos{% endblock %}
+{% block page_title %}Socios Vencidos{% endblock %}
+
+{% block content %}
+<div class="space-y-5" x-data="{ busqueda: '' }">
+
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Socios Vencidos</h1>
+      <p class="text-sm text-gray-500 mt-0.5">{{ usuarios|length }} socio{{ 's' if usuarios|length != 1 }} con membresía expirada</p>
+    </div>
+    {% if usuarios %}
+    <div class="px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-sm text-red-400 font-medium">
+      <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+      Requieren renovación
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="relative max-w-sm">
+    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"></i>
+    <input type="text" x-model="busqueda" placeholder="Buscar socio…"
+           class="w-full pl-9 pr-4 py-2.5 bg-gray-800 border border-gray-700/60 rounded-xl text-sm text-gray-200
+                  placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition">
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-800/80">
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Socio</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Teléfono</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Venció</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Último ingreso</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800/60">
+          {% for u in usuarios %}
+          <tr class="hover:bg-gray-800/40 transition-colors duration-100"
+              x-show="busqueda === '' || '{{ u.name|lower }}'.includes(busqueda.toLowerCase())">
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-red-500/15 border border-red-500/20 flex items-center justify-center text-xs font-bold text-red-400 flex-shrink-0">
+                  {{ u.name[0]|upper if u.name else '?' }}
+                </div>
+                <div>
+                  <p class="font-semibold text-gray-200">{{ u.name }}</p>
+                  <p class="text-xs text-gray-600 font-mono">{{ u.employeeNo }}</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-5 py-3.5 text-gray-400 hidden sm:table-cell">{{ u.telefono }}</td>
+            <td class="px-5 py-3.5">
+              <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                {{ u.valido_hasta }}
+              </span>
+            </td>
+            <td class="px-5 py-3.5 text-xs text-gray-500 font-mono hidden md:table-cell">
+              {{ u.ultima_fecha }}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="px-5 py-16 text-center">
+              <i data-lucide="check-circle" class="w-10 h-10 text-brand-500/40 mx-auto mb-3"></i>
+              <p class="text-gray-400 font-medium">¡Todos los socios están al día!</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+{% block scripts %}<script>lucide.createIcons();</script>{% endblock %}

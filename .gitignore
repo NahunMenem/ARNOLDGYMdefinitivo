@@ -1,0 +1,39 @@
+# Entorno virtual Python
+venv/
+env/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Credenciales y configuración sensible
+lector_config.json
+.env
+*.env
+*contrase*
+*password*
+*credencial*
+
+# Base de datos local
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Distribución / build
+dist/
+build/
+*.egg-info/

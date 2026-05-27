@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Historial Pases Diarios{% endblock %}
+{% block page_title %}Historial — Pases del Día{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+    <div class="flex-1">
+      <h1 class="text-2xl font-bold text-white">Historial de Pases del Día</h1>
+      <p class="text-sm text-gray-500 mt-0.5">{{ pases|length }} registro{{ 's' if pases|length != 1 }}</p>
+    </div>
+    <div class="flex gap-3">
+      <div class="card px-4 py-3 text-center">
+        <p class="text-xl font-bold text-white">{{ hoy_count }}</p>
+        <p class="text-xs text-gray-500">pases hoy</p>
+      </div>
+      <div class="card px-4 py-3 text-center">
+        <p class="text-xl font-bold text-brand-400">${{ '%.0f'|format(hoy_total) }}</p>
+        <p class="text-xs text-gray-500">hoy</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card p-4">
+    <form method="GET" class="flex flex-col sm:flex-row gap-3 items-end">
+      <div class="flex-1">
+        <label class="block text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1.5">Desde</label>
+        <input type="date" name="desde" value="{{ desde or '' }}"
+               class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white
+                      focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+      </div>
+      <div class="flex-1">
+        <label class="block text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1.5">Hasta</label>
+        <input type="date" name="hasta" value="{{ hasta or '' }}"
+               class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white
+                      focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+      </div>
+      <button type="submit"
+              class="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-xl transition flex items-center gap-2">
+        <i data-lucide="filter" class="w-4 h-4"></i> Filtrar
+      </button>
+      {% if desde or hasta %}
+      <a href="/pases_diarios"
+         class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold rounded-xl transition">
+        Limpiar
+      </a>
+      {% endif %}
+      <a href="/pase_diario"
+         class="px-4 py-2.5 bg-brand-500/20 hover:bg-brand-500/30 border border-brand-500/30 text-brand-400
+                text-sm font-semibold rounded-xl transition flex items-center gap-2">
+        <i data-lucide="plus" class="w-4 h-4"></i> Nuevo pase
+      </a>
+    </form>
+  </div>
+
+  <!-- Tabla -->
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-800/80">
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nombre</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Monto</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Método</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Notas</th>
+            <th class="px-5 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Acción</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800/60">
+          {% for p in pases %}
+          <tr class="hover:bg-gray-800/40 transition-colors duration-100">
+            <td class="px-5 py-3.5">
+              <span class="font-mono text-xs text-gray-300">{{ p.fecha.strftime('%d/%m/%Y') }}</span>
+              <br>
+              <span class="text-[10px] text-gray-600">{{ p.fecha.strftime('%H:%M') }}</span>
+            </td>
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-full bg-brand-500/15 border border-brand-500/20
+                            flex items-center justify-center text-xs font-bold text-brand-400 flex-shrink-0">
+                  {{ p.nombre[0]|upper if p.nombre else '?' }}
+                </div>
+                <span class="font-semibold text-gray-200">{{ p.nombre }}</span>
+              </div>
+            </td>
+            <td class="px-5 py-3.5">
+              <span class="font-bold text-brand-400">${{ '%.2f'|format(p.monto) }}</span>
+            </td>
+            <td class="px-5 py-3.5 hidden sm:table-cell">
+              {% set metodo_colors = {
+                'Efectivo':      'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+                'Transferencia': 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+                'Débito':        'text-purple-400 bg-purple-500/10 border-purple-500/20',
+                'QR':            'text-amber-400 bg-amber-500/10 border-amber-500/20',
+              } %}
+              <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold border
+                           {{ metodo_colors.get(p.metodo_pago, 'text-gray-400 bg-gray-700/50 border-gray-700') }}">
+                {{ p.metodo_pago or '—' }}
+              </span>
+            </td>
+            <td class="px-5 py-3.5 text-xs text-gray-500 hidden md:table-cell">{{ p.notas or '—' }}</td>
+            <td class="px-5 py-3.5 text-center">
+              <form action="{{ url_for('anular_pase_diario', id=p.id) }}" method="POST"
+                    onsubmit="return confirm('¿Eliminar este pase?')">
+                <button type="submit"
+                        class="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="px-5 py-16 text-center">
+              <div class="text-4xl mb-3">🎫</div>
+              <p class="text-gray-500">Sin pases en el período seleccionado</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if pases %}
+    <div class="px-5 py-3 border-t border-gray-800/60 flex justify-end">
+      <span class="text-sm text-gray-500">
+        Total: <span class="font-bold text-brand-400 ml-1">
+          ${{ '%.2f'|format(pases|sum(attribute='monto')) }}
+        </span>
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+{% block scripts %}<script>lucide.createIcons();</script>{% endblock %}

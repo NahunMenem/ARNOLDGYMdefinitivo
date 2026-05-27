@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-6 py-10">
+  <h1 class="text-3xl font-bold mb-6 flex items-center gap-3">
+    <i data-lucide="edit" class="w-6 h-6 text-yellow-400"></i>
+    Editar Usuario
+  </h1>
+
+  <form method="POST" action="/editar_usuario" class="space-y-6 bg-gray-800 text-white p-6 rounded-xl shadow-xl">
+    <input type="hidden" name="legajo_editar" value="{{ usuario.employeeNo }}">
+
+    <div>
+      <label class="block mb-1">Nombre</label>
+      <input type="text" name="nombre" value="{{ usuario.name }}" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2" required>
+    </div>
+
+    <div>
+      <label class="block mb-1">Género</label>
+      <select name="genero" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2">
+        <option value="Masculino" {% if usuario.genero == 'Masculino' %}selected{% endif %}>Masculino</option>
+        <option value="Femenino" {% if usuario.genero == 'Femenino' %}selected{% endif %}>Femenino</option>
+        <option value="Otro" {% if usuario.genero == 'Otro' %}selected{% endif %}>Otro</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block mb-1">Fecha de nacimiento</label>
+      <input type="date" name="fecha_nacimiento" value="{{ usuario.fecha_nacimiento }}" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2">
+    </div>
+
+    <div>
+      <label class="block mb-1">Teléfono</label>
+      <input type="text" name="telefono" value="{{ usuario.telefono }}" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2">
+    </div>
+
+    <div class="flex justify-end gap-2">
+      <a href="/listar_usuarios" class="bg-gray-600 px-4 py-2 rounded">Cancelar</a>
+      <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded text-white">Guardar</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

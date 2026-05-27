@@ -1,0 +1,7 @@
+Flask
+Flask-SQLAlchemy
+psycopg2-binary
+pytz
+requests
+gunicorn
+urllib3

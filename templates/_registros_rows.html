@@ -1,0 +1,36 @@
+{% if logs %}
+  {% for legajo, nombre, fecha in logs %}
+  <tr class="hover:bg-gray-800/40 transition-colors duration-100 {% if loop.first %}bg-brand-500/5{% endif %}">
+    <td class="px-5 py-3.5">
+      <span class="font-mono text-sm {% if loop.first %}text-brand-400 font-semibold{% else %}text-gray-300{% endif %}">
+        {{ fecha.strftime('%H:%M') }}
+      </span>
+      <span class="text-xs text-gray-600 ml-1.5">{{ fecha.strftime('%d/%m') }}</span>
+    </td>
+    <td class="px-5 py-3.5 font-mono text-xs text-gray-500">{{ legajo }}</td>
+    <td class="px-5 py-3.5">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-xs font-bold text-gray-400 flex-shrink-0">
+          {{ nombre[0]|upper if nombre else '?' }}
+        </div>
+        <span class="font-semibold {% if loop.first %}text-white{% else %}text-gray-200{% endif %}">
+          {{ nombre }}
+        </span>
+        {% if loop.first %}
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-brand-500/20 text-brand-400 font-semibold border border-brand-500/20">
+          Último
+        </span>
+        {% endif %}
+      </div>
+    </td>
+  </tr>
+  {% endfor %}
+{% else %}
+  <tr>
+    <td colspan="3" class="px-5 py-16 text-center">
+      <i data-lucide="clock" class="w-10 h-10 text-gray-700 mx-auto mb-3"></i>
+      <p class="text-gray-500 text-sm">Sin ingresos registrados hoy</p>
+      <p class="text-gray-700 text-xs mt-1">Los accesos aparecerán aquí en tiempo real</p>
+    </td>
+  </tr>
+{% endif %}

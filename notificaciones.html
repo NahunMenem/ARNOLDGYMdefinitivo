@@ -1,0 +1,24 @@
+<!-- templates/notificaciones.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Notificaciones en tiempo real</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Cartel de Ingreso</h1>
+    <div id="cartel" style="padding: 20px; background-color: lightgreen; font-size: 24px; display: none;"></div>
+
+    <script>
+        const socket = io();
+
+        socket.on('nuevo_ingreso', function(data) {
+            const cartel = document.getElementById('cartel');
+            cartel.textContent = "Ingresó: " + data.nombre;
+            cartel.style.display = "block";
+            setTimeout(() => cartel.style.display = "none", 5000);
+        });
+    </script>
+</body>
+</html>

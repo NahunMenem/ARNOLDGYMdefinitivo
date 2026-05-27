@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Transacciones{% endblock %}
+{% block page_title %}Transacciones{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+    <div class="flex-1">
+      <h1 class="text-2xl font-bold text-white">Transacciones</h1>
+      <p class="text-sm text-gray-500 mt-0.5">{{ pagos|length }} registro{{ 's' if pagos|length != 1 }}</p>
+    </div>
+
+    <!-- Resumen 3 tarjetas -->
+    <div class="flex gap-3 flex-wrap">
+      <div class="card px-4 py-3 text-center min-w-[120px]">
+        <p class="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mb-1">Membresías</p>
+        <p class="text-lg font-bold text-blue-400">${{ '%.2f'|format(total_membresias) }}</p>
+      </div>
+      <div class="card px-4 py-3 text-center min-w-[120px]">
+        <p class="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mb-1">Pases del día</p>
+        <p class="text-lg font-bold text-amber-400">${{ '%.2f'|format(total_pases) }}</p>
+      </div>
+      <div class="card px-4 py-3 text-center min-w-[120px] border-brand-500/30">
+        <p class="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mb-1">Total período</p>
+        <p class="text-lg font-bold text-brand-400">${{ '%.2f'|format(total_general) }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtro -->
+  <div class="card p-4">
+    <form method="GET" class="flex flex-col sm:flex-row gap-3 items-end">
+      <div class="flex-1">
+        <label class="block text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1.5">Desde</label>
+        <input type="date" name="desde" value="{{ desde or '' }}"
+               class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white
+                      focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+      </div>
+      <div class="flex-1">
+        <label class="block text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1.5">Hasta</label>
+        <input type="date" name="hasta" value="{{ hasta or '' }}"
+               class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white
+                      focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+      </div>
+      <button type="submit"
+              class="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-xl transition flex items-center gap-2">
+        <i data-lucide="filter" class="w-4 h-4"></i> Filtrar
+      </button>
+      {% if desde or hasta %}
+      <a href="/transacciones"
+         class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold rounded-xl transition flex items-center gap-2">
+        <i data-lucide="x" class="w-4 h-4"></i> Limpiar
+      </a>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- Tabla -->
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-800/80">
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tipo</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nombre</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Detalle</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Monto</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Método</th>
+            <th class="px-5 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Acción</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800/60">
+          {% for p in pagos %}
+          <tr class="hover:bg-gray-800/40 transition-colors duration-100">
+
+            <!-- Fecha -->
+            <td class="px-5 py-3.5 whitespace-nowrap">
+              <span class="font-mono text-xs text-gray-300">{{ p.fecha.strftime('%d/%m/%Y') }}</span>
+              <br>
+              <span class="text-[10px] text-gray-600">{{ p.fecha.strftime('%H:%M') }}</span>
+            </td>
+
+            <!-- Tipo badge -->
+            <td class="px-5 py-3.5">
+              {% if p.tipo == 'membresia' %}
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border
+                           text-blue-400 bg-blue-500/10 border-blue-500/20">
+                <i data-lucide="shield-check" class="w-3 h-3"></i> Membresía
+              </span>
+              {% else %}
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border
+                           text-amber-400 bg-amber-500/10 border-amber-500/20">
+                <i data-lucide="ticket" class="w-3 h-3"></i> Pase del día
+              </span>
+              {% endif %}
+            </td>
+
+            <!-- Nombre -->
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
+                            {% if p.tipo == 'membresia' %}bg-blue-500/15 border border-blue-500/20 text-blue-400
+                            {% else %}bg-amber-500/15 border border-amber-500/20 text-amber-400{% endif %}">
+                  {{ p.nombre[0]|upper if p.nombre else '?' }}
+                </div>
+                <span class="font-semibold text-gray-100 truncate max-w-[140px]">{{ p.nombre }}</span>
+              </div>
+            </td>
+
+            <!-- Detalle: legajo para membresías, notas para pases -->
+            <td class="px-5 py-3.5 hidden md:table-cell">
+              {% if p.tipo == 'membresia' %}
+                <span class="font-mono text-xs text-gray-500">{{ p.legajo or '—' }}</span>
+              {% else %}
+                <span class="text-xs text-gray-500 italic">{{ p.notas or '—' }}</span>
+              {% endif %}
+            </td>
+
+            <!-- Monto -->
+            <td class="px-5 py-3.5">
+              <span class="font-bold text-brand-400">${{ '%.2f'|format(p.monto) }}</span>
+            </td>
+
+            <!-- Método -->
+            <td class="px-5 py-3.5 hidden sm:table-cell">
+              {% set mc = {
+                'Efectivo':      'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+                'Transferencia': 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+                'Débito':        'text-purple-400 bg-purple-500/10 border-purple-500/20',
+                'QR':            'text-amber-400 bg-amber-500/10 border-amber-500/20',
+              } %}
+              <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold border
+                           {{ mc.get(p.metodo_pago, 'text-gray-400 bg-gray-700/50 border-gray-700') }}">
+                {{ p.metodo_pago or '—' }}
+              </span>
+            </td>
+
+            <!-- Eliminar -->
+            <td class="px-5 py-3.5 text-center">
+              <form action="/transacciones/anular" method="POST"
+                    onsubmit="return confirm('¿Eliminar esta transacción? No se puede deshacer.')">
+                <input type="hidden" name="id"   value="{{ p.id }}">
+                <input type="hidden" name="tipo" value="{{ p.tipo }}">
+                <button type="submit"
+                        class="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition"
+                        title="Eliminar transacción">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </form>
+            </td>
+
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="px-5 py-16 text-center">
+              <i data-lucide="credit-card" class="w-10 h-10 text-gray-700 mx-auto mb-3"></i>
+              <p class="text-gray-500">Sin transacciones en el período</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Footer totales -->
+    {% if pagos %}
+    <div class="px-5 py-4 border-t border-gray-800/60 flex flex-wrap justify-end gap-x-6 gap-y-1">
+      <span class="text-sm text-gray-500">
+        Membresías: <span class="font-bold text-blue-400 ml-1">${{ '%.2f'|format(total_membresias) }}</span>
+      </span>
+      <span class="text-sm text-gray-500">
+        Pases: <span class="font-bold text-amber-400 ml-1">${{ '%.2f'|format(total_pases) }}</span>
+      </span>
+      <span class="text-sm text-gray-500 font-semibold">
+        Total: <span class="font-bold text-brand-400 ml-1">${{ '%.2f'|format(total_general) }}</span>
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+{% block scripts %}<script>lucide.createIcons();</script>{% endblock %}

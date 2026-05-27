@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}Registrar Socio{% endblock %}
+{% block page_title %}Registrar Socio{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto"
+     x-data="{
+       cargando: false,
+       hecho: false,
+       error: '',
+       modalConfirm: false,
+       datoPendiente: null,
+       registrarPago: false,
+
+       async enviar(e) {
+         e.preventDefault();
+         const data = Object.fromEntries(new FormData(e.target).entries());
+         this.datoPendiente = data;
+         this.registrarPago = !!(data.monto_pago && data.metodo_pago);
+
+         if (this.registrarPago) {
+           this.modalConfirm = true;
+           return;
+         }
+         await this.submitData(data, false);
+       },
+
+       async confirmar() {
+         this.modalConfirm = false;
+         await this.submitData(this.datoPendiente, true);
+       },
+
+       async submitData(data, conPago) {
+         this.cargando = true; this.error = ''; this.hecho = false;
+         const res = await fetch('/cargar_usuario', {
+           method: 'POST',
+           headers: { 'Content-Type':'application/json' },
+           body: JSON.stringify(data)
+         });
+         const json = await res.json();
+
+         if (res.ok) {
+           if (conPago) {
+             await fetch('/registrar_pago', {
+               method: 'POST',
+               headers: { 'Content-Type':'application/x-www-form-urlencoded' },
+               body: new URLSearchParams({
+                 legajo_pago: data.legajo,
+                 monto_pago: data.monto_pago,
+                 metodo_pago: data.metodo_pago,
+                 nuevo_valido_hasta: data.valido_hasta || ''
+               })
+             });
+           }
+           this.hecho = true;
+           showToast('Socio registrado correctamente ✅', 'success');
+           document.getElementById('form-socio').reset();
+         } else {
+           this.error = json.error || json.response || 'Error desconocido';
+           showToast('Error al registrar: ' + this.error, 'error');
+         }
+         this.cargando = false;
+       }
+     }">
+
+  <div class="card p-6 md:p-8 space-y-6">
+
+    <div class="flex items-center gap-3">
+      <div class="p-3 bg-brand-500/15 rounded-2xl">
+        <i data-lucide="user-plus" class="w-6 h-6 text-brand-400"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold text-white">Registrar Socio</h1>
+        <p class="text-xs text-gray-500">Alta en el lector y la base de datos</p>
+      </div>
+    </div>
+
+    <!-- Alerta de éxito -->
+    <div x-show="hecho" x-cloak x-transition
+         class="flex items-center gap-3 p-4 bg-brand-500/10 border border-brand-500/20 rounded-xl text-brand-400 text-sm font-medium">
+      <i data-lucide="check-circle" class="w-5 h-5 flex-shrink-0"></i>
+      Socio cargado exitosamente en el lector y la base de datos.
+    </div>
+
+    <!-- Alerta de error -->
+    <div x-show="error" x-cloak x-transition
+         class="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+      <i data-lucide="alert-triangle" class="w-5 h-5 flex-shrink-0"></i>
+      <span x-text="error"></span>
+    </div>
+
+    <form id="form-socio" @submit="enviar($event)" class="space-y-5">
+
+      <!-- Datos del socio -->
+      <div class="space-y-4">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-widest">Datos personales</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Nombre completo *</label>
+            <input type="text" name="nombre" required placeholder="Juan Pérez"
+                   class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm
+                          placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/50 transition">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Legajo / ID *</label>
+            <input type="text" name="legajo" required placeholder="Ej: 1001"
+                   class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm
+                          font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Teléfono</label>
+            <input type="text" name="telefono" placeholder="Ej: 3804123456"
+                   class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm
+                          placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Fecha de nacimiento</label>
+            <input type="date" name="fecha_nacimiento"
+                   class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm
+                          focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Válido hasta *</label>
+            <input type="date" name="valido_hasta"
+                   class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm
+                          focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition">
+          </div>
+        </div>
+
+        <!-- Género -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">Género</label>
+          <div class="flex gap-3">
+            {% for val, label in [('Masculino','Hombre'),('Femenino','Mujer'),('Desconocido','No especificado')] %}
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="genero" value="{{ val }}" class="sr-only peer"
+                     {{ 'checked' if val == 'Desconocido' else '' }}>
+              <div class="text-center py-2 px-3 rounded-xl border border-gray-700 text-sm text-gray-400
+                          peer-checked:border-brand-500/60 peer-checked:bg-brand-500/10 peer-checked:text-brand-400
+                          hover:border-gray-600 transition cursor-pointer">
+                {{ label }}
+              </div>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Pago opcional -->
+      <div class="border-t border-gray-800 pt-5 space-y-4">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+          <i data-lucide="credit-card" class="w-3.5 h-3.5 text-gray-600"></i>
+          Registrar pago inicial <span class="text-gray-700 normal-case">(opcional)</span>
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Monto</label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">$</span>
+              <input type="number" name="monto_pago" step="0.01" min="0" placeholder="0.00"
+                     class="w-full pl-8 pr-4 bg-gray-900 border border-gray-700 rounded-xl py-2.5 text-white text-sm
+                            placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Método</label>
+            <select name="metodo_pago"
+                    class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white
+                           focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition">
+              <option value="">— Sin pago —</option>
+              <option value="Efectivo">Efectivo</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Débito">Débito</option>
+              <option value="QR">QR</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit" :disabled="cargando"
+              class="w-full py-3 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white font-bold
+                     rounded-xl flex items-center justify-center gap-2.5 transition text-sm">
+        <span x-show="!cargando" class="flex items-center gap-2">
+          <i data-lucide="upload-cloud" class="w-4 h-4"></i> Registrar socio
+        </span>
+        <span x-show="cargando" class="flex items-center gap-2" x-cloak>
+          <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+          Cargando…
+        </span>
+      </button>
+    </form>
+  </div><!-- /card -->
+
+  <!-- ══ MODAL CONFIRMACIÓN PAGO ════════════════════════ -->
+  <div x-show="modalConfirm" x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"
+         x-transition:enter="transition duration-200" x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100" @click="modalConfirm = false"></div>
+    <div class="relative card w-full max-w-sm p-6 shadow-2xl"
+         x-transition:enter="transition duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100">
+
+      <div class="text-center mb-5">
+        <div class="p-3 bg-amber-500/15 rounded-2xl inline-flex mb-3">
+          <i data-lucide="alert-circle" class="w-7 h-7 text-amber-400"></i>
+        </div>
+        <h3 class="font-bold text-white">Confirmar pago</h3>
+        <p class="text-sm text-gray-400 mt-1">
+          ¿Registrar pago de
+          <span class="text-white font-semibold" x-text="'$' + (datoPendiente?.monto_pago || 0)"></span>
+          por <span class="text-white font-semibold" x-text="datoPendiente?.metodo_pago"></span>?
+        </p>
+      </div>
+
+      <div class="flex gap-3">
+        <button @click="modalConfirm = false; submitData(datoPendiente, false)"
+                class="flex-1 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold transition">
+          Sin pago
+        </button>
+        <button @click="confirmar()"
+                class="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /max-w -->
+{% endblock %}
+
+{% block scripts %}<script>lucide.createIcons();</script>{% endblock %}

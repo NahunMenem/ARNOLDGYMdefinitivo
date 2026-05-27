@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block title %}Configuración del Lector{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto py-8 px-4">
+
+  <h1 class="text-3xl font-bold mb-8 flex items-center gap-3">
+    <i data-lucide="settings" class="w-7 h-7 text-green-400"></i>
+    Configuración del Lector
+  </h1>
+
+  <!-- ── Estado actual de la conexión ── -->
+  <div id="estado-card"
+       class="mb-6 p-4 rounded-xl border border-gray-700 bg-gray-800 flex items-center gap-4 transition-colors duration-300">
+    <div id="estado-icon" class="flex-shrink-0">
+      <i data-lucide="loader" class="w-9 h-9 text-gray-400 animate-spin"></i>
+    </div>
+    <div class="min-w-0">
+      <p id="estado-titulo" class="font-semibold text-gray-200">Verificando conexión…</p>
+      <p id="estado-detalle" class="text-sm text-gray-400 mt-0.5 truncate">—</p>
+    </div>
+  </div>
+
+  <!-- ── Formulario de configuración ── -->
+  <div class="bg-gray-800 rounded-2xl border border-gray-700 p-6 shadow-lg">
+
+    <h2 class="text-lg font-semibold mb-5 flex items-center gap-2 text-gray-200">
+      <i data-lucide="wifi" class="w-5 h-5 text-green-400"></i>
+      Conexión ISAPI — Hikvision
+    </h2>
+
+    <div class="space-y-4">
+
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">IP del lector</label>
+        <input id="inp-ip" type="text" value="{{ ip }}" placeholder="192.168.1.31"
+               class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white
+                      focus:outline-none focus:ring-2 focus:ring-green-500 font-mono tracking-wide">
+      </div>
+
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">Usuario</label>
+        <input id="inp-user" type="text" value="{{ user }}" placeholder="admin"
+               class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white
+                      focus:outline-none focus:ring-2 focus:ring-green-500">
+      </div>
+
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">
+          Contraseña
+          {% if pass_guardada %}
+            <span class="ml-2 text-xs text-green-400 bg-green-900/40 px-2 py-0.5 rounded-full">
+              ✓ guardada
+            </span>
+          {% endif %}
+        </label>
+        <input id="inp-pass" type="password" value=""
+               placeholder="{{ '(vacío = mantener la actual)' if pass_guardada else 'Contraseña del lector' }}"
+               class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white
+                      focus:outline-none focus:ring-2 focus:ring-green-500">
+      </div>
+
+    </div>
+
+    <!-- Panel de resultado -->
+    <div id="resultado"
+         class="hidden mt-5 p-4 rounded-xl border text-sm transition-all duration-200">
+    </div>
+
+    <!-- Botones -->
+    <div class="flex gap-3 mt-6">
+      <button id="btn-probar" onclick="probarConexion()"
+              class="flex-1 flex items-center justify-center gap-2
+                     bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg
+                     font-semibold transition disabled:opacity-50">
+        <i data-lucide="zap" class="w-4 h-4"></i>
+        Probar conexión
+      </button>
+      <button id="btn-guardar" onclick="guardarConfig()"
+              class="flex-1 flex items-center justify-center gap-2
+                     bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg
+                     font-semibold transition disabled:opacity-50">
+        <i data-lucide="save" class="w-4 h-4"></i>
+        Guardar
+      </button>
+    </div>
+
+  </div><!-- /card -->
+
+  <!-- Info tip -->
+  <div class="mt-5 p-4 bg-gray-800 rounded-xl border border-gray-700 text-sm text-gray-400 flex items-start gap-2">
+    <i data-lucide="info" class="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0"></i>
+    <div class="space-y-1">
+      <p>La configuración se guarda en
+        <code class="text-gray-200 bg-gray-900 px-1.5 py-0.5 rounded text-xs font-mono">lector_config.json</code>
+        y se aplica <strong class="text-white">al instante</strong>, sin reiniciar el sistema.
+      </p>
+      <p>Si dejás la contraseña vacía al guardar, se conserva la contraseña actual.</p>
+    </div>
+  </div>
+
+</div><!-- /max-w -->
+
+<script>
+  lucide.createIcons();
+
+  /* ── Helpers ─────────────────────────────────────────── */
+
+  function getFormData() {
+    return {
+      ip:       document.getElementById('inp-ip').value.trim(),
+      user:     document.getElementById('inp-user').value.trim(),
+      password: document.getElementById('inp-pass').value,
+    };
+  }
+
+  function setBusy(btnId, busy) {
+    const el = document.getElementById(btnId);
+    el.disabled = busy;
+    el.style.opacity = busy ? '0.55' : '1';
+  }
+
+  function setEstadoCard(estado, titulo, detalle) {
+    // estado: 'loading' | 'ok' | 'error'
+    const card = document.getElementById('estado-card');
+    const icon = document.getElementById('estado-icon');
+    const tit  = document.getElementById('estado-titulo');
+    const det  = document.getElementById('estado-detalle');
+
+    card.classList.remove('border-gray-700','border-green-500','border-red-500');
+
+    const iconMap = {
+      loading: `<i data-lucide="loader"      class="w-9 h-9 text-gray-400  animate-spin"></i>`,
+      ok:      `<i data-lucide="check-circle" class="w-9 h-9 text-green-400"></i>`,
+      error:   `<i data-lucide="x-circle"     class="w-9 h-9 text-red-400"></i>`,
+    };
+    const borderMap = { loading: 'border-gray-700', ok: 'border-green-500', error: 'border-red-500' };
+
+    card.classList.add(borderMap[estado] || 'border-gray-700');
+    icon.innerHTML   = iconMap[estado]  || iconMap.loading;
+    tit.textContent  = titulo;
+    det.textContent  = detalle;
+    lucide.createIcons();
+  }
+
+  function mostrarResultado(ok, html) {
+    const div = document.getElementById('resultado');
+    div.classList.remove(
+      'hidden',
+      'border-green-600','bg-green-900/30','text-green-300',
+      'border-red-600',  'bg-red-900/30',  'text-red-300',
+    );
+    if (ok) {
+      div.classList.add('border-green-600','bg-green-900/30','text-green-300');
+    } else {
+      div.classList.add('border-red-600','bg-red-900/30','text-red-300');
+    }
+    div.innerHTML = html;
+    lucide.createIcons();
+  }
+
+  function filaInfo(label, valor) {
+    if (!valor) return '';
+    return `<div>
+              <span class="text-current opacity-60">${label}:</span>
+              <span class="font-mono ml-1">${valor}</span>
+            </div>`;
+  }
+
+  /* ── Probar conexión (usa los valores del formulario) ── */
+
+  async function probarConexion() {
+    const data = getFormData();
+    if (!data.ip) { alert('Ingresá la IP del lector'); return; }
+
+    setBusy('btn-probar', true);
+    setEstadoCard('loading', 'Probando conexión…', `Conectando a ${data.ip}…`);
+    document.getElementById('resultado').classList.add('hidden');
+
+    try {
+      const res  = await fetch('/api/probar_lector', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(data),
+      });
+      const json = await res.json();
+
+      if (json.ok) {
+        setEstadoCard('ok',
+          '✅ Lector conectado',
+          `${json.dispositivo || 'Dispositivo Hikvision'} · ${json.ip}`
+        );
+        mostrarResultado(true, `
+          <div class="flex items-center gap-2 font-semibold text-base mb-3">
+            <i data-lucide="check-circle" class="w-5 h-5"></i>
+            Conexión exitosa
+          </div>
+          <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+            ${filaInfo('Dispositivo', json.dispositivo)}
+            ${filaInfo('Modelo',      json.modelo)}
+            ${filaInfo('N° de serie', json.serie)}
+            ${filaInfo('Firmware',    json.firmware)}
+            ${filaInfo('MAC',         json.mac)}
+            ${filaInfo('IP',          json.ip)}
+          </div>
+        `);
+      } else {
+        setEstadoCard('error', '❌ Sin conexión', json.error || 'Error desconocido');
+        mostrarResultado(false, `
+          <div class="flex items-center gap-2 font-semibold">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+            ${json.error || 'No se pudo conectar'}
+          </div>
+        `);
+      }
+    } catch (e) {
+      setEstadoCard('error', '❌ Error', e.message);
+      mostrarResultado(false, `<div class="flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4"></i> ${e.message}</div>`);
+    } finally {
+      setBusy('btn-probar', false);
+    }
+  }
+
+  /* ── Guardar configuración ─────────────────────────── */
+
+  async function guardarConfig() {
+    const data = getFormData();
+    if (!data.ip)   { alert('Ingresá la IP del lector'); return; }
+    if (!data.user) { alert('Ingresá el usuario');       return; }
+
+    setBusy('btn-guardar', true);
+    try {
+      const res  = await fetch('/api/guardar_config_lector', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(data),
+      });
+      const json = await res.json();
+
+      if (json.ok) {
+        mostrarResultado(true, `
+          <div class="flex items-center gap-2 font-semibold">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            ${json.mensaje}
+          </div>
+        `);
+        // Resetear campo contraseña
+        const inp = document.getElementById('inp-pass');
+        inp.value       = '';
+        inp.placeholder = '(vacío = mantener la actual)';
+      } else {
+        mostrarResultado(false, `
+          <div class="flex items-center gap-2 font-semibold">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+            ${json.error}
+          </div>
+        `);
+      }
+    } catch (e) {
+      mostrarResultado(false, `<span>${e.message}</span>`);
+    } finally {
+      setBusy('btn-guardar', false);
+      lucide.createIcons();
+    }
+  }
+
+  /* ── Al cargar la página: verificar estado actual ──── */
+  window.addEventListener('load', () => {
+    fetch('/api/estado_lector')
+      .then(r => r.json())
+      .then(json => {
+        if (json.ok) {
+          setEstadoCard('ok',
+            '✅ Lector conectado',
+            `${json.dispositivo || 'Hikvision'} · ${json.ip}`
+          );
+        } else {
+          setEstadoCard('error', '❌ Sin conexión', json.error || 'No se pudo conectar');
+        }
+      })
+      .catch(() => setEstadoCard('error', '❌ Error', 'No se pudo verificar la conexión'));
+  });
+</script>
+{% endblock %}

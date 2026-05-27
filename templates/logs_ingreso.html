@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-6">
+    <h1 class="text-2xl font-bold mb-4 text-white flex items-center gap-2">
+        <i data-lucide="list-check"></i> Registros de Ingreso
+    </h1>
+
+    {% if eventos %}
+    <div class="overflow-x-auto bg-base-100 rounded-xl shadow-md">
+        <table class="min-w-full divide-y divide-gray-300">
+            <thead class="bg-base-200 text-gray-700">
+                <tr>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">Hora</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">Método</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">Nombre</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">Legajo</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">Estado</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-base-200">
+                {% for evento in eventos %}
+                <tr class="hover:bg-base-300 transition duration-150 ease-in-out">
+                    <td class="px-4 py-2 text-sm whitespace-nowrap">{{ evento.hora_local }}</td>
+                    <td class="px-4 py-2 text-sm">{{ evento.metodo_legible }}</td>
+                    <td class="px-4 py-2 text-sm">{{ evento.name or "-" }}</td>
+                    <td class="px-4 py-2 text-sm">{{ evento.employeeNo or "-" }}</td>
+                    <td class="px-4 py-2 text-sm">
+                        {% if evento.estado == "ok" %}
+                            <span class="text-green-600 font-semibold">✔ Permitido</span>
+                        {% else %}
+                            <span class="text-red-600 font-semibold">✖ Denegado</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-base text-white mt-4">No hay registros disponibles en las últimas 24 horas.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- ── Filtro fechas ──────────────────────────────── -->
+  <div class="card p-4">
+    <form method="get" class="flex flex-col sm:flex-row gap-3 items-end">
+      <div class="flex-1">
+        <label class="block text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1.5">Desde</label>
+        <input type="date" name="desde" value="{{ desde or '' }}"
+               class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white
+                      focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+      </div>
+      <div class="flex-1">
+        <label class="block text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1.5">Hasta</label>
+        <input type="date" name="hasta" value="{{ hasta or '' }}"
+               class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white
+                      focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+      </div>
+      <button type="submit"
+              class="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-xl transition flex items-center gap-2">
+        <i data-lucide="filter" class="w-4 h-4"></i> Filtrar
+      </button>
+      {% if desde or hasta %}
+      <a href="/dashboard"
+         class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold rounded-xl transition flex items-center gap-2">
+        <i data-lucide="x" class="w-4 h-4"></i> Limpiar
+      </a>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- ── KPI Socios ─────────────────────────────────── -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <div class="card p-5">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs text-gray-500 font-semibold uppercase tracking-wide">Total</p>
+          <p class="text-3xl font-bold text-white mt-1">{{ total }}</p>
+          <p class="text-xs text-gray-500 mt-1">socios registrados</p>
+        </div>
+        <div class="p-2.5 bg-brand-500/15 rounded-xl">
+          <i data-lucide="users" class="w-5 h-5 text-brand-400"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-5">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs text-gray-500 font-semibold uppercase tracking-wide">Hombres</p>
+          <p class="text-3xl font-bold text-blue-400 mt-1">{{ hombres }}</p>
+          <p class="text-xs text-gray-500 mt-1">masculino</p>
+        </div>
+        <div class="p-2.5 bg-blue-500/15 rounded-xl">
+          <i data-lucide="user" class="w-5 h-5 text-blue-400"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-5">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs text-gray-500 font-semibold uppercase tracking-wide">Mujeres</p>
+          <p class="text-3xl font-bold text-pink-400 mt-1">{{ mujeres }}</p>
+          <p class="text-xs text-gray-500 mt-1">femenino</p>
+        </div>
+        <div class="p-2.5 bg-pink-500/15 rounded-xl">
+          <i data-lucide="user" class="w-5 h-5 text-pink-400"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-5">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs text-gray-500 font-semibold uppercase tracking-wide">Otro / N/D</p>
+          <p class="text-3xl font-bold text-gray-400 mt-1">{{ otros }}</p>
+          <p class="text-xs text-gray-500 mt-1">no definido</p>
+        </div>
+        <div class="p-2.5 bg-gray-700/50 rounded-xl">
+          <i data-lucide="help-circle" class="w-5 h-5 text-gray-500"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Ingresos ───────────────────────────────────── -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+    <!-- Total ingresos -->
+    <div class="card p-6">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="p-3 bg-brand-500/15 rounded-xl">
+          <i data-lucide="trending-up" class="w-6 h-6 text-brand-400"></i>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 font-semibold uppercase tracking-wide">Ingresos totales</p>
+          <p class="text-3xl font-bold text-brand-400">${{ '%.2f'|format(total_ingresos) }}</p>
+        </div>
+      </div>
+      <!-- Desglose membresías vs pases -->
+      <div class="grid grid-cols-2 gap-3 pt-3 border-t border-gray-800/60">
+        <div class="bg-gray-900/60 rounded-xl p-3">
+          <p class="text-[10px] text-gray-500 uppercase tracking-wide font-semibold mb-1">Membresías</p>
+          <p class="text-lg font-bold text-white">${{ '%.2f'|format(total_membresias) }}</p>
+        </div>
+        <div class="bg-gray-900/60 rounded-xl p-3">
+          <p class="text-[10px] text-gray-500 uppercase tracking-wide font-semibold mb-1 flex items-center gap-1">
+            <span>Pases del día</span>
+          </p>
+          <p class="text-lg font-bold text-white">${{ '%.2f'|format(total_pases) }}</p>
+          <p class="text-[10px] text-gray-600 mt-0.5">{{ pases_hoy_count }} hoy · ${{ '%.0f'|format(pases_hoy_total) }}</p>
+        </div>
+      </div>
+      {% if desde or hasta %}
+      <p class="text-[10px] text-gray-600 mt-2">Período filtrado</p>
+      {% endif %}
+    </div>
+
+    <!-- Por método -->
+    <div class="card p-6">
+      <h3 class="text-sm font-semibold text-gray-400 mb-4 flex items-center gap-2">
+        <i data-lucide="pie-chart" class="w-4 h-4 text-brand-400"></i> Por método de pago
+      </h3>
+      {% if ingresos_por_metodo %}
+      <div class="space-y-3">
+        {% set max_val = ingresos_por_metodo | map(attribute=1) | max %}
+        {% for metodo, monto in ingresos_por_metodo %}
+        <div>
+          <div class="flex justify-between text-sm mb-1">
+            <span class="text-gray-300 font-medium">{{ metodo }}</span>
+            <span class="text-brand-400 font-semibold">${{ '%.2f'|format(monto) }}</span>
+          </div>
+          <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+            <div class="h-full bg-brand-500 rounded-full transition-all duration-700"
+                 style="width: {{ (monto / max_val * 100)|round(1) }}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-gray-600 text-sm">Sin datos en el período</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Top clientes ───────────────────────────────── -->
+  <div class="card p-6">
+    <h3 class="text-sm font-semibold text-gray-400 mb-4 flex items-center gap-2">
+      <i data-lucide="star" class="w-4 h-4 text-amber-400"></i> Socios con más pagos
+    </h3>
+    {% if ingresos_por_cliente %}
+    <div class="space-y-2">
+      {% for nombre, monto in ingresos_por_cliente %}
+      <div class="flex items-center gap-3 py-2 {% if not loop.last %}border-b border-gray-800/60{% endif %}">
+        <div class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs font-bold
+                    {% if loop.index == 1 %}text-amber-400{% elif loop.index == 2 %}text-gray-400{% elif loop.index == 3 %}text-amber-700{% else %}text-gray-600{% endif %}">
+          {{ loop.index }}
+        </div>
+        <span class="flex-1 text-sm text-gray-200 font-medium">{{ nombre }}</span>
+        <span class="text-sm font-bold text-brand-400">${{ '%.2f'|format(monto) }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-gray-600 text-sm">Sin datos en el período</p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}<script>lucide.createIcons();</script>{% endblock %}

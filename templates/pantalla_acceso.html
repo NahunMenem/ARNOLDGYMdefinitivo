@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-[#0F172A] to-[#1E293B] text-white text-center px-4 py-10 space-y-10">
+
+  <!-- Cartel de acceso -->
+  <div id="estado-acceso" class="w-full max-w-3xl p-10 rounded-3xl shadow-2xl bg-[#1E293B] backdrop-blur-sm transition-all duration-300 flex flex-col items-center gap-6 border border-[#3A5A40] relative">
+    <i data-lucide="scan-face" class="w-20 h-20 text-[#A3B18A] animate-pulse"></i>
+    <h2 class="text-4xl font-bold text-[#DAD7CD] tracking-wide">Esperando acceso...</h2>
+  </div>
+
+  <!-- Cumpleaños del mes -->
+  <div id="cumples" class="w-full max-w-3xl rounded-xl border border-[#3A5A40] bg-[#0F172A] shadow-inner p-8">
+    <h3 class="text-2xl font-bold text-[#A3B18A] mb-4 flex items-center gap-2">
+      <i data-lucide="cake" class="w-6 h-6 text-[#A3B18A]"></i> Cumpleaños del mes 🎉
+    </h3>
+    <ul id="lista-cumples" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-300 font-light">
+      <li>Cargando cumpleaños...</li>
+    </ul>
+  </div>
+</div>
+
+<audio id="sonido-acceso" src="{{ url_for('static', filename='sonido.mp3') }}"></audio>
+
+<script>
+  let ultimoLegajoMostrado = null;
+  let mostrandoMensaje = false;
+
+  function formatearFecha(fechaStr) {
+    const fecha = new Date(fechaStr);
+    if (isNaN(fecha.getTime())) return "Fecha inválida";
+    return fecha.toLocaleDateString("es-AR", { year: "numeric", month: "long", day: "numeric" });
+  }
+
+  function mostrarEsperando() {
+    const contenedor = document.getElementById("estado-acceso");
+    contenedor.innerHTML = `
+      <i data-lucide="scan-face" class="w-20 h-20 text-[#A3B18A] animate-pulse"></i>
+      <h2 class="text-4xl font-bold text-[#DAD7CD] tracking-wide">Esperando acceso...</h2>
+    `;
+    contenedor.className = "w-full max-w-3xl p-10 rounded-3xl shadow-2xl bg-[#1E293B] backdrop-blur-sm transition-all duration-300 flex flex-col items-center gap-6 border border-[#3A5A40] relative";
+    lucide.createIcons();
+    mostrandoMensaje = false;
+  }
+
+  async function verificarUltimoIngreso() {
+    if (mostrandoMensaje) return;
+
+    try {
+      const res = await fetch("/api/ultimo_ingreso");
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (!data.legajo || data.legajo === ultimoLegajoMostrado) return;
+
+      mostrandoMensaje = true;
+      ultimoLegajoMostrado = data.legajo;
+
+      const contenedor = document.getElementById("estado-acceso");
+      const sonido = document.getElementById("sonido-acceso");
+      contenedor.innerHTML = "";
+
+      contenedor.classList.remove("bg-[#1E293B]", "bg-[#344E41]", "bg-red-900");
+
+      const icono = document.createElement("i");
+      const titulo = document.createElement("h2");
+      const nombre = document.createElement("p");
+      const mensaje = document.createElement("p");
+
+      icono.classList.add("w-20", "h-20");
+
+      const fechaFormateada = formatearFecha(data.fecha_vencimiento);
+      const diasRestantes = data.dias_restantes ?? "0";
+
+      if (data.estado === "correcto") {
+        contenedor.classList.add("bg-[#344E41]");
+        icono.setAttribute("data-lucide", "check-circle");
+        icono.classList.add("text-green-400");
+        titulo.textContent = "✅ Acceso correcto";
+        titulo.classList.add("text-4xl", "font-bold", "text-green-300");
+        mensaje.textContent = `Membresía válida hasta el ${fechaFormateada} (${diasRestantes} días restantes)`;
+        mensaje.classList.add("text-lg", "text-green-200");
+      } else {
+        contenedor.classList.add("bg-red-900");
+        icono.setAttribute("data-lucide", "x-circle");
+        icono.classList.add("text-red-400");
+        titulo.textContent = "❌ Acceso denegado";
+        titulo.classList.add("text-4xl", "font-bold", "text-red-300");
+        mensaje.textContent = `Membresía vencida el ${fechaFormateada}`;
+        mensaje.classList.add("text-lg", "text-red-200");
+      }
+
+      nombre.textContent = data.nombre;
+      nombre.classList.add("text-2xl", "text-white", "font-semibold");
+
+      contenedor.appendChild(icono);
+      contenedor.appendChild(titulo);
+      contenedor.appendChild(nombre);
+      contenedor.appendChild(mensaje);
+
+      sonido.play();
+      lucide.createIcons();
+
+      setTimeout(() => {
+        mostrarEsperando();
+      }, 10000);
+    } catch (e) {
+      console.log("Error al verificar ingreso:", e);
+    }
+  }
+
+  async function mostrarCumplesDelMes() {
+    try {
+      const res = await fetch("/api/cumples_mes");
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const lista = document.getElementById("lista-cumples");
+      lista.innerHTML = "";
+
+      if (data.length === 0) {
+        lista.innerHTML = "<li class='text-gray-400 italic'>No hay cumpleaños este mes.</li>";
+        return;
+      }
+
+      data.forEach(cumple => {
+        const li = document.createElement("li");
+        li.innerHTML = `<span class="text-[#DAD7CD] font-medium">🎉 ${cumple.nombre}</span> — <span class="text-[#A3B18A]">${cumple.fecha}</span>`;
+        lista.appendChild(li);
+      });
+    } catch (e) {
+      console.log("Error al cargar cumpleaños:", e);
+    }
+  }
+
+  mostrarEsperando();
+  mostrarCumplesDelMes();
+  setInterval(verificarUltimoIngreso, 3000);
+</script>
+{% endblock %}

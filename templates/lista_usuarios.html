@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% block title %}Socios Activos{% endblock %}
+{% block page_title %}Socios Activos{% endblock %}
+
+{% block content %}
+<div
+  x-data="{
+    busqueda: '',
+    filtroGenero: '',
+    filtroMembresia: '',
+
+    modalPago: false,
+    legajoPago: '',
+
+    modalEditar: false,
+    ed: { legajo:'', nombre:'', genero:'', nacimiento:'', telefono:'' },
+
+    abrirPago(legajo) { this.legajoPago = legajo; this.modalPago = true; },
+    cerrarPago()       { this.modalPago = false; },
+
+    abrirEditar(legajo, nombre, genero, nacimiento, telefono) {
+      this.ed = { legajo, nombre, genero, nacimiento, telefono };
+      this.modalEditar = true;
+    },
+    cerrarEditar() { this.modalEditar = false; },
+
+    async eliminar(legajo, nombre) {
+      if (!confirm('¿Eliminar a ' + nombre + '? Se borrará del lector y la base de datos.')) return;
+      try {
+        const r = await fetch('/eliminar_usuario/' + legajo, { method:'POST' });
+        const j = await r.json();
+        if (j.status === 200) {
+          document.querySelector('[data-legajo=\"' + legajo + '\"]').remove();
+          showToast('Socio eliminado correctamente', 'success');
+        } else {
+          showToast('Error al eliminar del lector', 'error');
+        }
+      } catch(e) { showToast('Error de conexión', 'error'); }
+    },
+
+    async enviarComprobante(legajo, telefono) {
+      if (!telefono || telefono === '-') { showToast('Este socio no tiene teléfono registrado','warning'); return; }
+      try {
+        const r = await fetch('/api/ultimo_pago/' + legajo);
+        const d = await r.json();
+        if (r.ok) {
+          const msg = '📢 Hola ' + d.nombre + ',\n\n✅ Pago registrado:\n\n💵 Monto: $' + d.monto
+                    + '\n💳 Método: ' + d.metodo_pago + '\n📅 Vence: ' + d.valido_hasta
+                    + '\n\n¡Gracias por seguir entrenando 💪!';
+          window.open('https://wa.me/54' + telefono.replace(/ /g,'') + '?text=' + encodeURIComponent(msg),'_blank');
+        } else { showToast('No se encontró el último pago','warning'); }
+      } catch(e) { showToast('Error al obtener el comprobante','error'); }
+    }
+  }"
+  class="space-y-6">
+
+  <!-- ── Header + stats bar ───────────────────────────── -->
+  <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Socios Activos</h1>
+      <p class="text-sm text-gray-500 mt-0.5">
+        {{ usuarios|length }} socio{{ 's' if usuarios|length != 1 }} en el lector
+        <span class="text-gray-600">· máx. 500</span>
+      </p>
+    </div>
+    <!-- Barra de capacidad -->
+    <div class="sm:ml-auto flex items-center gap-3 bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-2.5 min-w-[200px]">
+      <i data-lucide="cpu" class="w-4 h-4 text-gray-400 flex-shrink-0"></i>
+      <div class="flex-1">
+        <div class="flex justify-between text-xs mb-1">
+          <span class="text-gray-400">Capacidad</span>
+          <span class="font-semibold text-gray-200">{{ usuarios|length }}/500</span>
+        </div>
+        <div class="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+          <div class="h-full rounded-full transition-all duration-500
+                      {% if usuarios|length / 500 > 0.85 %}bg-red-500
+                      {% elif usuarios|length / 500 > 0.6 %}bg-amber-400
+                      {% else %}bg-brand-500{% endif %}"
+               style="width: {{ (usuarios|length / 500 * 100)|round(1) }}%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filtros ──────────────────────────────────────── -->
+  <div class="flex flex-col sm:flex-row gap-3">
+    <div class="relative flex-1">
+      <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"></i>
+      <input type="text" x-model="busqueda" placeholder="Buscar socio…"
+             class="w-full pl-9 pr-4 py-2.5 bg-gray-800 border border-gray-700/60 rounded-xl
+                    text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2
+                    focus:ring-brand-500/50 focus:border-brand-500/50 transition">
+    </div>
+    <select x-model="filtroGenero"
+            class="bg-gray-800 border border-gray-700/60 rounded-xl px-4 py-2.5 text-sm
+                   text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+      <option value="">Todos los géneros</option>
+      <option value="Masculino">Masculino</option>
+      <option value="Femenino">Femenino</option>
+      <option value="Otro">Otro</option>
+    </select>
+    <select x-model="filtroMembresia"
+            class="bg-gray-800 border border-gray-700/60 rounded-xl px-4 py-2.5 text-sm
+                   text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+      <option value="">Todas las membresías</option>
+      <option value="Vigente">Vigente</option>
+      <option value="Vencido">Vencido</option>
+    </select>
+  </div>
+
+  <!-- ── Tabla ────────────────────────────────────────── -->
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-800/80">
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Legajo</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nombre</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Género</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Nacimiento</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Teléfono</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Vence</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+            <th class="px-5 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800/60">
+          {% for u in usuarios %}
+          <tr data-legajo="{{ u.employeeNo }}"
+              data-nombre="{{ u.name|lower }}"
+              data-genero="{{ u.genero or '' }}"
+              data-membresia="{{ u.membresia or '' }}"
+              x-show="
+                (busqueda === '' || $el.dataset.nombre.includes(busqueda.toLowerCase())) &&
+                (filtroGenero === ''    || $el.dataset.genero    === filtroGenero) &&
+                (filtroMembresia === '' || $el.dataset.membresia === filtroMembresia)
+              "
+              class="hover:bg-gray-800/40 transition-colors duration-100 group">
+
+            <td class="px-5 py-3.5 font-mono text-xs text-gray-400">{{ u.employeeNo }}</td>
+            <td class="px-5 py-3.5 font-semibold text-gray-100">{{ u.name }}</td>
+            <td class="px-5 py-3.5 text-gray-400 hidden md:table-cell">{{ u.genero or '—' }}</td>
+            <td class="px-5 py-3.5 text-gray-400 hidden lg:table-cell">{{ u.fecha_nacimiento or '—' }}</td>
+            <td class="px-5 py-3.5 text-gray-400 hidden md:table-cell">{{ u.telefono or '—' }}</td>
+            <td class="px-5 py-3.5 text-gray-300 font-mono text-xs">
+              {% if u.valido_hasta %}{{ u.valido_hasta }}
+              {% elif u.Valid and u.Valid.endTime %}{{ u.Valid.endTime[:10] }}
+              {% else %}—{% endif %}
+            </td>
+            <td class="px-5 py-3.5">
+              {% if u.membresia == 'Vigente' %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Vigente
+                </span>
+              {% elif u.membresia == 'Vencido' %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/15 text-red-400 border border-red-500/20">
+                  <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Vencido
+                </span>
+              {% else %}
+                <span class="text-gray-600 text-xs">—</span>
+              {% endif %}
+            </td>
+
+            <!-- Acciones -->
+            <td class="px-5 py-3.5">
+              <div class="flex items-center justify-center gap-1.5">
+                <!-- Pago -->
+                <button @click="abrirPago('{{ u.employeeNo }}')"
+                        title="Registrar pago"
+                        class="p-2 rounded-lg bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 transition">
+                  <i data-lucide="dollar-sign" class="w-3.5 h-3.5"></i>
+                </button>
+                <!-- Editar -->
+                <button @click="abrirEditar('{{ u.employeeNo }}','{{ u.name|replace("'","\\'") }}','{{ u.genero or "" }}','{{ u.fecha_nacimiento or "" }}','{{ u.telefono or "" }}')"
+                        title="Editar datos"
+                        class="p-2 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                </button>
+                <!-- WhatsApp -->
+                <button @click="enviarComprobante('{{ u.employeeNo }}','{{ u.telefono or '' }}')"
+                        title="Enviar comprobante"
+                        class="p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition">
+                  <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                </button>
+                <!-- Eliminar -->
+                <button @click="eliminar('{{ u.employeeNo }}','{{ u.name|replace("'","\\'") }}')"
+                        title="Eliminar socio"
+                        class="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="px-5 py-16 text-center">
+              <i data-lucide="users" class="w-10 h-10 text-gray-700 mx-auto mb-3"></i>
+              <p class="text-gray-500">Sin socios registrados</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ MODAL PAGO ════════════════════════════════════════ -->
+  <div x-show="modalPago" x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"
+         x-transition:enter="transition duration-200" x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100" x-transition:leave="transition duration-150"
+         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+         @click="cerrarPago()"></div>
+    <!-- Panel -->
+    <div class="relative card w-full max-w-md p-6 shadow-2xl"
+         x-transition:enter="transition duration-200"
+         x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+         x-transition:leave="transition duration-150"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95">
+
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-brand-500/15 rounded-xl">
+            <i data-lucide="dollar-sign" class="w-5 h-5 text-brand-400"></i>
+          </div>
+          <div>
+            <h2 class="font-bold text-white">Registrar Pago</h2>
+            <p class="text-xs text-gray-500">Legajo: <span x-text="legajoPago" class="font-mono text-gray-400"></span></p>
+          </div>
+        </div>
+        <button @click="cerrarPago()" class="p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form method="POST" action="/registrar_pago" class="space-y-4">
+        <input type="hidden" name="legajo_pago" :value="legajoPago">
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Válido hasta</label>
+          <input type="date" name="nuevo_valido_hasta" required
+                 class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white
+                        focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/50 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Monto</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
+            <input type="number" name="monto_pago" step="0.01" min="0" placeholder="0.00" required
+                   class="w-full pl-8 pr-4 bg-gray-900 border border-gray-700 rounded-xl py-2.5 text-white
+                          focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/50 text-sm">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Método de pago</label>
+          <select name="metodo_pago" required
+                  class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white
+                         focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/50 text-sm">
+            <option value="">Seleccionar…</option>
+            <option value="Efectivo">Efectivo</option>
+            <option value="Transferencia">Transferencia</option>
+            <option value="Débito">Débito</option>
+          </select>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="cerrarPago()"
+                  class="flex-1 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition flex items-center justify-center gap-2">
+            <i data-lucide="check" class="w-4 h-4"></i> Confirmar pago
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══ MODAL EDITAR ══════════════════════════════════════ -->
+  <div x-show="modalEditar" x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"
+         x-transition:enter="transition duration-200" x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100" x-transition:leave="transition duration-150"
+         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+         @click="cerrarEditar()"></div>
+    <div class="relative card w-full max-w-md p-6 shadow-2xl"
+         x-transition:enter="transition duration-200"
+         x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+         x-transition:leave="transition duration-150"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95">
+
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-amber-500/15 rounded-xl">
+            <i data-lucide="edit-3" class="w-5 h-5 text-amber-400"></i>
+          </div>
+          <div>
+            <h2 class="font-bold text-white">Editar Socio</h2>
+            <p class="text-xs text-gray-500" x-text="ed.nombre"></p>
+          </div>
+        </div>
+        <button @click="cerrarEditar()" class="p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form method="POST" action="/editar_usuario" class="space-y-4">
+        <input type="hidden" name="legajo_editar" :value="ed.legajo">
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Nombre</label>
+          <input type="text" name="nombre" :value="ed.nombre" required
+                 class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white
+                        focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Género</label>
+          <select name="genero" :value="ed.genero"
+                  class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white
+                         focus:outline-none focus:ring-2 focus:ring-amber-500/50 text-sm">
+            <option value="Masculino" :selected="ed.genero === 'Masculino'">Masculino</option>
+            <option value="Femenino"  :selected="ed.genero === 'Femenino'">Femenino</option>
+            <option value="Otro"      :selected="ed.genero === 'Otro'">Otro</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Fecha de nacimiento</label>
+          <input type="date" name="fecha_nacimiento" :value="ed.nacimiento"
+                 class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white
+                        focus:outline-none focus:ring-2 focus:ring-amber-500/50 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Teléfono</label>
+          <input type="text" name="telefono" :value="ed.telefono"
+                 class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white
+                        focus:outline-none focus:ring-2 focus:ring-amber-500/50 text-sm">
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="cerrarEditar()"
+                  class="flex-1 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition flex items-center justify-center gap-2">
+            <i data-lucide="save" class="w-4 h-4"></i> Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div><!-- /x-data -->
+{% endblock %}
+
+{% block scripts %}
+<script>lucide.createIcons();</script>
+{% endblock %}
