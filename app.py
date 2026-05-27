@@ -1033,6 +1033,31 @@ from flask import jsonify
 from datetime import datetime
 import psycopg2
 
+@app.route('/api/cumpleanios_hoy')
+def api_cumpleanios_hoy():
+    """Devuelve los socios que cumplen años HOY (día y mes). Incluye teléfono."""
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur  = conn.cursor()
+        hoy  = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires'))
+        cur.execute("""
+            SELECT nombre, telefono, TO_CHAR(fecha_nacimiento, 'DD/MM') as fecha
+            FROM usuarios_lector
+            WHERE EXTRACT(DAY   FROM fecha_nacimiento) = %s
+              AND EXTRACT(MONTH FROM fecha_nacimiento) = %s
+            ORDER BY nombre
+        """, (hoy.day, hoy.month))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify([
+            {"nombre": r[0], "telefono": r[1] or "", "fecha": r[2]}
+            for r in rows
+        ])
+    except Exception as e:
+        return jsonify([]), 500
+
+
 @app.route('/api/cumples_mes')
 def api_cumples_mes():
     try:

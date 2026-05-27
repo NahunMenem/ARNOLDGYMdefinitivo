@@ -33,7 +33,9 @@
             🎉 {{ u.fecha }}
           </span>
           {% if u.telefono and u.telefono != '-' %}
-          <a href="https://wa.me/54{{ u.telefono.replace(' ', '') }}"
+          {% set nombre_corto = u.name.split()[0] %}
+          {% set mensaje = "🎂 ¡Feliz cumpleaños " ~ nombre_corto ~ "! 🎉 Te deseamos un gran día. Desde el equipo de Arnold Gym, ¡muchas felicidades! 💪" %}
+          <a href="https://wa.me/54{{ u.telefono.replace(' ', '') }}?text={{ mensaje | urlencode }}"
              target="_blank"
              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold
                     bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition">
