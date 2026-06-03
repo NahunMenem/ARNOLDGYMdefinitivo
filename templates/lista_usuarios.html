@@ -26,7 +26,7 @@
         const r = await fetch('/eliminar_usuario/' + legajo, { method:'POST' });
         const j = await r.json();
         if (j.status === 200) {
-          document.querySelector('[data-legajo=\"' + legajo + '\"]').remove();
+          document.querySelector('[data-legajo=\'' + legajo + '\']').remove();
           showToast('Socio eliminado correctamente', 'success');
         } else {
           showToast('Error al eliminar del lector', 'error');
