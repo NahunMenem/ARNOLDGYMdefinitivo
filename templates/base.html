@@ -26,13 +26,13 @@
   </script>
 
   <!-- Lucide icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="{{ url_for('static', filename='js/lucide.min.js') }}"></script>
 
   <!-- HTMX -->
   <script src="https://unpkg.com/htmx.org@2.0.3" defer></script>
 
   <!-- Alpine.js -->
-  <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <script defer src="{{ url_for('static', filename='js/alpine.min.js') }}"></script>
 
   <style>
     [x-cloak] { display: none !important; }
