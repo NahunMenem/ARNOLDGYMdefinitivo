@@ -234,19 +234,24 @@ def listar_usuarios():
     ip_cliente = request.remote_addr
     print(f"IP del cliente: {ip_cliente}")
 
-    # Si es red local o localhost → traer del lector
+    page         = request.args.get('page', 1, type=int)
+    busqueda     = request.args.get('busqueda', '').strip().lower()
+    filtro_genero     = request.args.get('genero', '')
+    filtro_membresia  = request.args.get('membresia', '')
+    per_page = 25
+
     if ip_cliente.startswith("192.168.") or ip_cliente == "127.0.0.1":
-        return listar_usuarios_lector()
+        return listar_usuarios_lector(page, per_page, busqueda, filtro_genero, filtro_membresia)
     else:
-        return listar_usuarios_bd()
+        return listar_usuarios_bd(page, per_page, busqueda, filtro_genero, filtro_membresia)
 
 
-def listar_usuarios_lector():
+def listar_usuarios_lector(page, per_page, busqueda, filtro_genero, filtro_membresia):
     url = f"{BASE_URL}/AccessControl/UserInfo/Search?format=json"
     payload = {
         "UserInfoSearchCond": {
             "searchID": "1",
-            "maxResults": 100,
+            "maxResults": 500,
             "searchResultPosition": 0
         }
     }
@@ -266,7 +271,6 @@ def listar_usuarios_lector():
         datos_db = cur.fetchall()
         conn.close()
 
-        # Diccionario por legajo
         datos_dict = {
             str(f[0]): {
                 "nombre": f[1],
@@ -280,7 +284,6 @@ def listar_usuarios_lector():
 
         fecha_hoy = date.today().isoformat()
 
-        # Fusionar datos
         fusionados = {}
         for u in usuarios_lector:
             legajo = str(u.get("employeeNo"))
@@ -308,7 +311,6 @@ def listar_usuarios_lector():
                     "Valid": None
                 }
 
-        # Evaluar membresía
         for u in fusionados.values():
             fecha_validez = u.get("valido_hasta") or (u.get("Valid", {}).get("endTime")[:10] if u.get("Valid") else None)
             if fecha_validez:
@@ -316,25 +318,80 @@ def listar_usuarios_lector():
             else:
                 u["membresia"] = "Sin datos"
 
-        return render_template("lista_usuarios.html", usuarios=list(fusionados.values()))
+        todos = list(fusionados.values())
+        total_lector = len(todos)
+
+        # Aplicar filtros
+        if busqueda:
+            todos = [u for u in todos if busqueda in (u.get("name") or "").lower()]
+        if filtro_genero:
+            todos = [u for u in todos if u.get("genero") == filtro_genero]
+        if filtro_membresia:
+            todos = [u for u in todos if u.get("membresia") == filtro_membresia]
+
+        total = len(todos)
+        pages = max(1, (total + per_page - 1) // per_page)
+        page  = max(1, min(page, pages))
+        start = (page - 1) * per_page
+        usuarios_pagina = todos[start:start + per_page]
+
+        return render_template("lista_usuarios.html",
+            usuarios=usuarios_pagina,
+            total_lector=total_lector,
+            total=total,
+            page=page,
+            pages=pages,
+            per_page=per_page,
+            busqueda=busqueda,
+            filtro_genero=filtro_genero,
+            filtro_membresia=filtro_membresia,
+        )
 
     except Exception as e:
         return f"Error al obtener usuarios: {str(e)}"
 
 
-def listar_usuarios_bd():
+def listar_usuarios_bd(page, per_page, busqueda, filtro_genero, filtro_membresia):
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
-        cur.execute("""
+
+        where_clauses = []
+        params = []
+
+        if busqueda:
+            where_clauses.append("LOWER(nombre) LIKE %s")
+            params.append(f"%{busqueda}%")
+        if filtro_genero:
+            where_clauses.append("genero = %s")
+            params.append(filtro_genero)
+        if filtro_membresia == "Vigente":
+            where_clauses.append("valido_hasta >= CURRENT_DATE")
+        elif filtro_membresia == "Vencido":
+            where_clauses.append("(valido_hasta IS NULL OR valido_hasta < CURRENT_DATE)")
+
+        where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+
+        cur.execute("SELECT COUNT(*) FROM usuarios_lector")
+        total_lector = cur.fetchone()[0]
+
+        cur.execute(f"SELECT COUNT(*) FROM usuarios_lector{where_sql}", params)
+        total = cur.fetchone()[0]
+
+        pages = max(1, (total + per_page - 1) // per_page)
+        page  = max(1, min(page, pages))
+        offset = (page - 1) * per_page
+
+        cur.execute(f"""
             SELECT nombre, legajo, genero, fecha_nacimiento, telefono, valido_hasta
-            FROM usuarios_lector
-        """)
+            FROM usuarios_lector{where_sql}
+            ORDER BY nombre
+            LIMIT %s OFFSET %s
+        """, params + [per_page, offset])
         usuarios_db = cur.fetchall()
         conn.close()
 
         fecha_hoy = date.today()
-
         usuarios = []
         for u in usuarios_db:
             usuarios.append({
@@ -347,7 +404,17 @@ def listar_usuarios_bd():
                 "membresia": "Vigente" if u[5] and u[5] >= fecha_hoy else "Vencido"
             })
 
-        return render_template("lista_usuarios.html", usuarios=usuarios)
+        return render_template("lista_usuarios.html",
+            usuarios=usuarios,
+            total_lector=total_lector,
+            total=total,
+            page=page,
+            pages=pages,
+            per_page=per_page,
+            busqueda=busqueda,
+            filtro_genero=filtro_genero,
+            filtro_membresia=filtro_membresia,
+        )
 
     except Exception as e:
         return f"Error al obtener usuarios desde la DB: {str(e)}"
@@ -1157,34 +1224,52 @@ def api_ultimo_pago(legajo):
 
 @app.route('/usuarios_inactivos')
 def usuarios_inactivos():
+    per_page = 25
+    page     = request.args.get('page', 1, type=int)
+    busqueda = request.args.get('busqueda', '').strip().lower()
+
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
 
-        # Traer todos los usuarios vencidos (sin límite de días)
-        cur.execute("""
-            SELECT 
-                u.legajo, 
-                u.nombre, 
-                u.genero, 
-                u.fecha_nacimiento, 
-                u.telefono, 
+        where_extra = ""
+        params = []
+        if busqueda:
+            where_extra = " AND LOWER(u.nombre) LIKE %s"
+            params.append(f"%{busqueda}%")
+
+        cur.execute(f"""
+            SELECT COUNT(*)
+            FROM usuarios_lector u
+            WHERE u.valido_hasta IS NOT NULL
+                AND u.valido_hasta < CURRENT_DATE
+                {where_extra}
+        """, params)
+        total = cur.fetchone()[0]
+
+        pages = max(1, (total + per_page - 1) // per_page)
+        page  = max(1, min(page, pages))
+        offset = (page - 1) * per_page
+
+        cur.execute(f"""
+            SELECT
+                u.legajo,
+                u.nombre,
+                u.genero,
+                u.fecha_nacimiento,
+                u.telefono,
                 u.valido_hasta,
                 MAX(i.fecha) AS ultima_fecha
             FROM usuarios_lector u
             LEFT JOIN ingresos_lector i ON u.legajo = i.legajo
-            WHERE u.valido_hasta IS NOT NULL 
+            WHERE u.valido_hasta IS NOT NULL
                 AND u.valido_hasta < CURRENT_DATE
-            GROUP BY 
-                u.legajo, 
-                u.nombre, 
-                u.genero, 
-                u.fecha_nacimiento, 
-                u.telefono, 
-                u.valido_hasta
-            ORDER BY 
-                u.nombre ASC;  -- 🔤 orden alfabético
-        """)
+                {where_extra}
+            GROUP BY
+                u.legajo, u.nombre, u.genero, u.fecha_nacimiento, u.telefono, u.valido_hasta
+            ORDER BY u.nombre ASC
+            LIMIT %s OFFSET %s
+        """, params + [per_page, offset])
 
         usuarios = []
         for row in cur.fetchall():
@@ -1202,7 +1287,14 @@ def usuarios_inactivos():
         cur.close()
         conn.close()
 
-        return render_template("usuarios_inactivos.html", usuarios=usuarios)
+        return render_template("usuarios_inactivos.html",
+            usuarios=usuarios,
+            total=total,
+            page=page,
+            pages=pages,
+            per_page=per_page,
+            busqueda=busqueda,
+        )
 
     except Exception as e:
         return f"Error al obtener usuarios inactivos: {e}", 500

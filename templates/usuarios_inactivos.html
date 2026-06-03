@@ -3,14 +3,14 @@
 {% block page_title %}Socios Vencidos{% endblock %}
 
 {% block content %}
-<div class="space-y-5" x-data="{ busqueda: '' }">
+<div class="space-y-5">
 
   <div class="flex items-center justify-between flex-wrap gap-3">
     <div>
       <h1 class="text-2xl font-bold text-white">Socios Vencidos</h1>
-      <p class="text-sm text-gray-500 mt-0.5">{{ usuarios|length }} socio{{ 's' if usuarios|length != 1 }} con membresía expirada</p>
+      <p class="text-sm text-gray-500 mt-0.5">{{ total }} socio{{ 's' if total != 1 }} con membresía expirada</p>
     </div>
-    {% if usuarios %}
+    {% if total %}
     <div class="px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-sm text-red-400 font-medium">
       <i data-lucide="alert-triangle" class="w-4 h-4"></i>
       Requieren renovación
@@ -18,12 +18,13 @@
     {% endif %}
   </div>
 
-  <div class="relative max-w-sm">
+  <form method="GET" action="/usuarios_inactivos" id="filtros-form" class="relative max-w-sm">
     <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"></i>
-    <input type="text" x-model="busqueda" placeholder="Buscar socio…"
+    <input type="text" name="busqueda" value="{{ busqueda }}" placeholder="Buscar socio…"
+           oninput="clearTimeout(this._t); this._t = setTimeout(() => document.getElementById('filtros-form').submit(), 400)"
            class="w-full pl-9 pr-4 py-2.5 bg-gray-800 border border-gray-700/60 rounded-xl text-sm text-gray-200
                   placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition">
-  </div>
+  </form>
 
   <div class="card overflow-hidden">
     <div class="overflow-x-auto">
@@ -38,8 +39,7 @@
         </thead>
         <tbody class="divide-y divide-gray-800/60">
           {% for u in usuarios %}
-          <tr class="hover:bg-gray-800/40 transition-colors duration-100"
-              x-show="busqueda === '' || '{{ u.name|lower }}'.includes(busqueda.toLowerCase())">
+          <tr class="hover:bg-gray-800/40 transition-colors duration-100">
             <td class="px-5 py-3.5">
               <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-red-500/15 border border-red-500/20 flex items-center justify-center text-xs font-bold text-red-400 flex-shrink-0">
@@ -73,6 +73,50 @@
       </table>
     </div>
   </div>
+
+  <!-- ── Paginación ──────────────────────────────────────── -->
+  {% if pages > 1 or total > 0 %}
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-3 px-1">
+    <p class="text-sm text-gray-500">
+      {% if total == 0 %}
+        Sin resultados
+      {% else %}
+        Mostrando
+        <span class="text-gray-300 font-semibold">{{ (page - 1) * per_page + 1 }}–{{ [(page * per_page), total]|min }}</span>
+        de <span class="text-gray-300 font-semibold">{{ total }}</span> socios
+      {% endif %}
+    </p>
+    <div class="flex items-center gap-2">
+      {% if page > 1 %}
+      <a href="/usuarios_inactivos?page={{ page - 1 }}&busqueda={{ busqueda }}"
+         class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800 border border-gray-700/60
+                text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition">
+        <i data-lucide="chevron-left" class="w-4 h-4"></i> Anterior
+      </a>
+      {% else %}
+      <span class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800/40 border border-gray-700/30 text-sm text-gray-600 cursor-not-allowed">
+        <i data-lucide="chevron-left" class="w-4 h-4"></i> Anterior
+      </span>
+      {% endif %}
+
+      <span class="px-3 py-2 rounded-xl bg-gray-800 border border-gray-700/60 text-sm text-gray-300 font-mono">
+        {{ page }} / {{ pages }}
+      </span>
+
+      {% if page < pages %}
+      <a href="/usuarios_inactivos?page={{ page + 1 }}&busqueda={{ busqueda }}"
+         class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800 border border-gray-700/60
+                text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition">
+        Siguiente <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </a>
+      {% else %}
+      <span class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800/40 border border-gray-700/30 text-sm text-gray-600 cursor-not-allowed">
+        Siguiente <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 
 </div>
 {% endblock %}

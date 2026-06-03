@@ -5,10 +5,6 @@
 {% block content %}
 <div
   x-data="{
-    busqueda: '',
-    filtroGenero: '',
-    filtroMembresia: '',
-
     modalPago: false,
     legajoPago: '',
 
@@ -59,7 +55,7 @@
     <div>
       <h1 class="text-2xl font-bold text-white">Socios Activos</h1>
       <p class="text-sm text-gray-500 mt-0.5">
-        {{ usuarios|length }} socio{{ 's' if usuarios|length != 1 }} en el lector
+        {{ total_lector }} socio{{ 's' if total_lector != 1 }} en el lector
         <span class="text-gray-600">· máx. 500</span>
       </p>
     </div>
@@ -69,44 +65,45 @@
       <div class="flex-1">
         <div class="flex justify-between text-xs mb-1">
           <span class="text-gray-400">Capacidad</span>
-          <span class="font-semibold text-gray-200">{{ usuarios|length }}/500</span>
+          <span class="font-semibold text-gray-200">{{ total_lector }}/500</span>
         </div>
         <div class="h-1.5 bg-gray-700 rounded-full overflow-hidden">
           <div class="h-full rounded-full transition-all duration-500
-                      {% if usuarios|length / 500 > 0.85 %}bg-red-500
-                      {% elif usuarios|length / 500 > 0.6 %}bg-amber-400
+                      {% if total_lector / 500 > 0.85 %}bg-red-500
+                      {% elif total_lector / 500 > 0.6 %}bg-amber-400
                       {% else %}bg-brand-500{% endif %}"
-               style="width: {{ (usuarios|length / 500 * 100)|round(1) }}%"></div>
+               style="width: {{ (total_lector / 500 * 100)|round(1) }}%"></div>
         </div>
       </div>
     </div>
   </div>
 
   <!-- ── Filtros ──────────────────────────────────────── -->
-  <div class="flex flex-col sm:flex-row gap-3">
+  <form method="GET" action="/listar_usuarios" id="filtros-form" class="flex flex-col sm:flex-row gap-3">
     <div class="relative flex-1">
       <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"></i>
-      <input type="text" x-model="busqueda" placeholder="Buscar socio…"
+      <input type="text" name="busqueda" value="{{ busqueda }}" placeholder="Buscar socio…"
+             oninput="clearTimeout(this._t); this._t = setTimeout(() => document.getElementById('filtros-form').submit(), 400)"
              class="w-full pl-9 pr-4 py-2.5 bg-gray-800 border border-gray-700/60 rounded-xl
                     text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2
                     focus:ring-brand-500/50 focus:border-brand-500/50 transition">
     </div>
-    <select x-model="filtroGenero"
+    <select name="genero" onchange="document.getElementById('filtros-form').submit()"
             class="bg-gray-800 border border-gray-700/60 rounded-xl px-4 py-2.5 text-sm
                    text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
       <option value="">Todos los géneros</option>
-      <option value="Masculino">Masculino</option>
-      <option value="Femenino">Femenino</option>
-      <option value="Otro">Otro</option>
+      <option value="Masculino" {% if filtro_genero == 'Masculino' %}selected{% endif %}>Masculino</option>
+      <option value="Femenino"  {% if filtro_genero == 'Femenino'  %}selected{% endif %}>Femenino</option>
+      <option value="Otro"      {% if filtro_genero == 'Otro'      %}selected{% endif %}>Otro</option>
     </select>
-    <select x-model="filtroMembresia"
+    <select name="membresia" onchange="document.getElementById('filtros-form').submit()"
             class="bg-gray-800 border border-gray-700/60 rounded-xl px-4 py-2.5 text-sm
                    text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
       <option value="">Todas las membresías</option>
-      <option value="Vigente">Vigente</option>
-      <option value="Vencido">Vencido</option>
+      <option value="Vigente" {% if filtro_membresia == 'Vigente' %}selected{% endif %}>Vigente</option>
+      <option value="Vencido" {% if filtro_membresia == 'Vencido' %}selected{% endif %}>Vencido</option>
     </select>
-  </div>
+  </form>
 
   <!-- ── Tabla ────────────────────────────────────────── -->
   <div class="card overflow-hidden">
@@ -127,14 +124,6 @@
         <tbody class="divide-y divide-gray-800/60">
           {% for u in usuarios %}
           <tr data-legajo="{{ u.employeeNo }}"
-              data-nombre="{{ u.name|lower }}"
-              data-genero="{{ u.genero or '' }}"
-              data-membresia="{{ u.membresia or '' }}"
-              x-show="
-                (busqueda === '' || $el.dataset.nombre.includes(busqueda.toLowerCase())) &&
-                (filtroGenero === ''    || $el.dataset.genero    === filtroGenero) &&
-                (filtroMembresia === '' || $el.dataset.membresia === filtroMembresia)
-              "
               class="hover:bg-gray-800/40 transition-colors duration-100 group">
 
             <td class="px-5 py-3.5 font-mono text-xs text-gray-400">{{ u.employeeNo }}</td>
@@ -203,6 +192,53 @@
       </table>
     </div>
   </div>
+
+  <!-- ── Paginación ──────────────────────────────────────── -->
+  {% if pages > 1 or total > 0 %}
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-3 px-1">
+    <p class="text-sm text-gray-500">
+      {% if total == 0 %}
+        Sin resultados
+      {% else %}
+        Mostrando
+        <span class="text-gray-300 font-semibold">{{ (page - 1) * per_page + 1 }}–{{ [(page * per_page), total]|min }}</span>
+        de <span class="text-gray-300 font-semibold">{{ total }}</span> socios
+      {% endif %}
+    </p>
+    <div class="flex items-center gap-2">
+      <!-- Anterior -->
+      {% if page > 1 %}
+      <a href="/listar_usuarios?page={{ page - 1 }}&busqueda={{ busqueda }}&genero={{ filtro_genero }}&membresia={{ filtro_membresia }}"
+         class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800 border border-gray-700/60
+                text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition">
+        <i data-lucide="chevron-left" class="w-4 h-4"></i> Anterior
+      </a>
+      {% else %}
+      <span class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800/40 border border-gray-700/30 text-sm text-gray-600 cursor-not-allowed">
+        <i data-lucide="chevron-left" class="w-4 h-4"></i> Anterior
+      </span>
+      {% endif %}
+
+      <!-- Página actual -->
+      <span class="px-3 py-2 rounded-xl bg-gray-800 border border-gray-700/60 text-sm text-gray-300 font-mono">
+        {{ page }} / {{ pages }}
+      </span>
+
+      <!-- Siguiente -->
+      {% if page < pages %}
+      <a href="/listar_usuarios?page={{ page + 1 }}&busqueda={{ busqueda }}&genero={{ filtro_genero }}&membresia={{ filtro_membresia }}"
+         class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800 border border-gray-700/60
+                text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition">
+        Siguiente <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </a>
+      {% else %}
+      <span class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800/40 border border-gray-700/30 text-sm text-gray-600 cursor-not-allowed">
+        Siguiente <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 
   <!-- ══ MODAL PAGO ════════════════════════════════════════ -->
   <div x-show="modalPago" x-cloak
