@@ -46,7 +46,7 @@ _cfg        = _leer_config_lector()
 HIKVISION_IP = _cfg["ip"]
 USERNAME     = _cfg["user"]
 PASSWORD     = _cfg["pass"]
-BASE_URL     = f"https://{HIKVISION_IP}/ISAPI"
+BASE_URL     = f"http://{HIKVISION_IP}/ISAPI"
 
 # Desactivar advertencias por certificado autofirmado
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -1593,7 +1593,7 @@ def api_guardar_config_lector():
         HIKVISION_IP = nueva_ip
         USERNAME     = nuevo_usr
         PASSWORD     = nueva_pw
-        BASE_URL     = f"https://{HIKVISION_IP}/ISAPI"
+        BASE_URL     = f"http://{HIKVISION_IP}/ISAPI"
 
         # Refrescar la sesión con las nuevas credenciales
         hikvision_session.auth = HTTPDigestAuth(USERNAME, PASSWORD)
