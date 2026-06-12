@@ -15,6 +15,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 import os
 DATABASE_URL = os.environ.get("DATABASE_URL") or "postgresql://negocio2_user:0reioO9H1lLJqE2IazaFKoZ55ZItnU5X@dpg-d04do9qdbo4c73egutjg-a.oregon-postgres.render.com/negocio2"
+INGRESO_DEDUP_SECONDS = 30
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -890,10 +891,11 @@ def registros_ingreso():
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
         cur.execute("""
-            SELECT legajo, nombre, fecha
+            SELECT legajo, nombre, MAX(fecha) AS fecha
             FROM ingresos_lector
             WHERE (fecha AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
                   = (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
+            GROUP BY legajo, nombre, date_trunc('minute', fecha AT TIME ZONE 'America/Argentina/Buenos_Aires')
             ORDER BY fecha DESC
         """)
         logs = cur.fetchall()
@@ -917,9 +919,11 @@ def registros_ingreso_parcial():
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
         cur.execute("""
-            SELECT legajo, nombre, fecha FROM ingresos_lector
+            SELECT legajo, nombre, MAX(fecha) AS fecha
+            FROM ingresos_lector
             WHERE (fecha AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
                   = (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
+            GROUP BY legajo, nombre, date_trunc('minute', fecha AT TIME ZONE 'America/Argentina/Buenos_Aires')
             ORDER BY fecha DESC
         """)
         logs = cur.fetchall()
@@ -960,10 +964,13 @@ import psycopg2
 def notificar_evento():
     print("== NUEVO EVENTO ==")
     print("IP origen:", request.remote_addr)
-    print("Método:", request.method)
-    print("Headers:", dict(request.headers))
-    body_text = request.get_data(as_text=True) or ""
-    print("Body crudo:\n", body_text[:2000])
+    # Leer body solo si no es multipart (evita imprimir bytes binarios de imágenes adjuntas)
+    content_type = request.headers.get('Content-Type', '')
+    if 'multipart' in content_type:
+        body_text = ""
+    else:
+        body_text = request.get_data(as_text=True) or ""
+        print("Body crudo:\n", body_text[:2000])
 
     legajo = nombre = verify_mode = None
 
@@ -999,6 +1006,21 @@ def notificar_evento():
             ahora_arg = datetime.now(timezone('America/Argentina/Buenos_Aires'))
             conn = psycopg2.connect(DATABASE_URL)
             cur = conn.cursor()
+            cur.execute("""
+                SELECT id, fecha
+                FROM ingresos_lector
+                WHERE legajo = %s
+                  AND fecha >= %s - (%s * interval '1 second')
+                ORDER BY fecha DESC
+                LIMIT 1
+            """, (legajo, ahora_arg, INGRESO_DEDUP_SECONDS))
+            duplicado = cur.fetchone()
+
+            if duplicado:
+                cur.close(); conn.close()
+                print(f"[BD] Ingreso duplicado ignorado: {nombre} ({legajo})")
+                return "OK", 200
+
             cur.execute("INSERT INTO ingresos_lector (legajo, nombre, fecha) VALUES (%s,%s,%s)",
                         (legajo, nombre, ahora_arg))
             conn.commit()
@@ -1491,6 +1513,7 @@ def api_estado_lector():
             'GET',
             f"{BASE_URL}/System/deviceInfo",
             timeout=5,
+            max_reintentos=1,
         )
         if res.status_code == 200:
             info = _parsear_device_info(res.text)
