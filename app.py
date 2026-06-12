@@ -1544,7 +1544,7 @@ def api_probar_lector():
 
     try:
         res = requests.get(
-            f"https://{ip}/ISAPI/System/deviceInfo",
+            f"http://{ip}/ISAPI/System/deviceInfo",
             auth=HTTPDigestAuth(user, password),
             verify=False, timeout=5
         )
